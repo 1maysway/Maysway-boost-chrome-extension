@@ -254,6 +254,32 @@ async function load(URLS, index, name, jno) {
         }
     }
 
+    // get current time in samara
+    function getCurrentTimeSamaraNoApi() {
+        let date = new Date();
+        let utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+        let samara = new Date(utc + (3600000 * 3));
+        let hours = samara.getHours();
+        let minutes = samara.getMinutes();
+        let seconds = samara.getSeconds();
+        if (hours < 10) hours = "0" + hours;
+        if (minutes < 10) minutes = "0" + minutes;
+        if (seconds < 10) seconds = "0" + seconds;
+        return hours + ":" + minutes + ":" + seconds;
+    }
+    // get current date in samara
+    function getCurrentDateSamaraNoApi() {
+        let date = new Date();
+        let utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+        let samara = new Date(utc + (3600000 * 3));
+        let day = samara.getDate();
+        let month = samara.getMonth() + 1;
+        let year = samara.getFullYear();
+        if (day < 10) day = "0" + day;
+        if (month < 10) month = "0" + month;
+        return day + "." + month + "." + year;
+    }
+
 
     ////////////////////////////////////
 
@@ -379,7 +405,15 @@ async function load(URLS, index, name, jno) {
             setTimeout(() => {
                 try {
                     //document.querySelector('yt-icon-button.style-scope.ytd-toggle-button-renderer.style-text').click();
-                    document.getElementsByClassName('yt-spec-button-shape-next yt-spec-button-shape-next--tonal yt-spec-button-shape-next--mono yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--segmented-start ')[0].click()
+                    //document.getElementsByClassName('yt-spec-button-shape-next yt-spec-button-shape-next--tonal yt-spec-button-shape-next--mono yt-spec-button-shape-next--size-m yt-spec-button-shape-next--icon-leading yt-spec-button-shape-next--segmented-start ')[0].click()
+                    document.getElementsByClassName('yt-simple-endpoint style-scope ytd-toggle-button-renderer')[0].click();
+
+                    // find element by viewBox attribute
+                    //document.querySelectorAll('[d="M18.77,11h-4.23l1.52-4.94C16.38,5.03,15.54,4,14.38,4c-0.58,0-1.14,0.24-1.52,0.65L7,11H3v10h4h1h9.43 c1.06,0,1.98-0.67,2.19-1.61l1.34-6C21.23,12.15,20.18,11,18.77,11z M7,20H4v-8h3V20z M19.98,13.17l-1.34,6 C18.54,19.65,18.03,20,17.43,20H8v-8.61l5.6-6.06C13.79,5.12,14.08,5,14.38,5c0.26,0,0.5,0.11,0.63,0.3 c0.07,0.1,0.15,0.26,0.09,0.47l-1.52,4.94L13.18,12h1.35h4.23c0.41,0,0.8,0.17,1.03,0.46C19.92,12.61,20.05,12.86,19.98,13.17z"]')[0].parentElement.parentElement.parentElement.parentElement.click();
+
+                    // find element by aria-pressed attribute
+                    document.querySelectorAll('[aria-pressed="false"]')[0].click();
+
                 } catch {
                     console.log("Like button not found");
                 }
@@ -608,8 +642,6 @@ async function load(URLS, index, name, jno) {
                                 })
                             });
                             const content = await rawResponse.json();
-                            console.log('CONTENT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-                            console.log(content);
                         }
                         //})();
 
@@ -617,7 +649,6 @@ async function load(URLS, index, name, jno) {
                         await setStorageLocal("completedDate", await getCurrentDateSamara());
 
                         chrome.runtime.sendMessage({ msg: "end" });
-
 
                         notify("Boost completed", "maysway boost");
 
@@ -637,7 +668,6 @@ async function load(URLS, index, name, jno) {
                 });
 
                 console.log(URLS);
-
 
             }, ((time > 300000 ? 300000 : time) / 13) * rand);
 
@@ -664,7 +694,6 @@ function stopwatch(seconds) {
 
 function randomApiKey(jno) {
     let keys = jno.lans;
-    console.log(keys);
     let randomKey = keys[Math.floor(Math.random() * keys.length)];
     return randomKey;
 }
@@ -741,4 +770,30 @@ async function getCurrentDateSamara() {
 
     today = dd + '.' + mm + '.' + yyyy;
     return today;
+}
+
+// get current time in samara
+function getCurrentTimeSamaraNoApi() {
+    let date = new Date();
+    let utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+    let samara = new Date(utc + (3600000 * 3));
+    let hours = samara.getHours();
+    let minutes = samara.getMinutes();
+    let seconds = samara.getSeconds();
+    if (hours < 10) hours = "0" + hours;
+    if (minutes < 10) minutes = "0" + minutes;
+    if (seconds < 10) seconds = "0" + seconds;
+    return hours + ":" + minutes + ":" + seconds;
+}
+// get current date in samara
+function getCurrentDateSamaraNoApi() {
+    let date = new Date();
+    let utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+    let samara = new Date(utc + (3600000 * 3));
+    let day = samara.getDate();
+    let month = samara.getMonth() + 1;
+    let year = samara.getFullYear();
+    if (day < 10) day = "0" + day;
+    if (month < 10) month = "0" + month;
+    return day + "." + month + "." + year;
 }

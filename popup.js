@@ -6,6 +6,7 @@ async function loadExt() {
     let index;
     let startedDate;
 
+
     await getStorageLocalAll().then(async function(result) {
         percent = result.percent || 0;
         completedDate = result.completedDate || "";
@@ -16,11 +17,12 @@ async function loadExt() {
 
         document.forms['start-form'].name.value = name || "";
 
-        let currentTime = await getCurrentTimeSamara();
+        let currentTime = getCurrentTimeSamaraNoApi();
+        let currentDate = getCurrentDateSamaraNoApi();
 
         //currentTime >= "20:15:00" && 
         if (currentTime <= "23:59:59") {
-            if (startedDate != await getCurrentDateSamara() && (boostStatus != "not completed" && boostStatus != "undefined" && boostStatus != undefined)) {
+            if (startedDate != currentDate && (boostStatus != "not completed" && boostStatus != "undefined" && boostStatus != undefined)) {
                 boostStatus = "not completed";
                 setStorageLocal("boostStatus", "not completed");
             }
@@ -104,9 +106,26 @@ async function loadExt() {
         document.body.classList.add('loaded');
         //}, 500);
     });
+
+
+
 }
 
-loadExt();
+//loadExt();
+
+async function preLoad() {
+    let version = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/Version.json')
+        .then((response) => response.json())
+
+    if (chrome.runtime.getManifest().version == version.version) {
+        loadExt();
+    } else {
+        document.body.innerHTML = `<div class="container"><h1 style="text-align:center;">Outdated version of the extension.</h1></div>`;
+    }
+}
+
+preLoad();
+
 
 
 //////////////////////////////////////
@@ -149,12 +168,14 @@ document.getElementById('stop-btn').addEventListener('click', async(event) => {
 // form submit
 startForm.addEventListener('submit', async(event) => {
     event.preventDefault();
-    console.log("SUBMIT FORM SUBMIT FORM SUBMIT FORM SUBMIT FORM");
+
+
+
     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
     await setStorageLocal("index", 0);
     await setStorageLocal("percent", 0);
-    await setStorageLocal("startedDate", await getCurrentDateSamara());
+    await setStorageLocal("startedDate", getCurrentDateSamaraNoApi());
 
     const formData = new FormData(startForm);
 
@@ -162,8 +183,6 @@ startForm.addEventListener('submit', async(event) => {
     await setStorageLocal('boostStatus', 'started');
 
     document.querySelector('#stop-btn').style.display = 'block';
-
-
 
     startForm.style.display = 'none';
 
@@ -478,4 +497,30 @@ function getStorageLocalAll() {
             resolve(result);
         });
     });
+}
+
+// get current time in samara
+function getCurrentTimeSamaraNoApi() {
+    let date = new Date();
+    let utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+    let samara = new Date(utc + (3600000 * 3));
+    let hours = samara.getHours();
+    let minutes = samara.getMinutes();
+    let seconds = samara.getSeconds();
+    if (hours < 10) hours = "0" + hours;
+    if (minutes < 10) minutes = "0" + minutes;
+    if (seconds < 10) seconds = "0" + seconds;
+    return hours + ":" + minutes + ":" + seconds;
+}
+// get current date in samara
+function getCurrentDateSamaraNoApi() {
+    let date = new Date();
+    let utc = date.getTime() + (date.getTimezoneOffset() * 60000);
+    let samara = new Date(utc + (3600000 * 3));
+    let day = samara.getDate();
+    let month = samara.getMonth() + 1;
+    let year = samara.getFullYear();
+    if (day < 10) day = "0" + day;
+    if (month < 10) month = "0" + month;
+    return day + "." + month + "." + year;
 }
