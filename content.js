@@ -24,3 +24,35 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         localStorage.setItem("canReady", "false");
     }
 });
+
+window.addEventListener("blur", function() {
+    console.log("BLUR BLUR BLUR");
+    chrome.runtime.sendMessage({ msg: "window blur" });
+
+});
+
+
+function notify(title, message) {
+    if (Notification.permission !== 'granted')
+        Notification.requestPermission();
+    else {
+        var notification = new Notification(title, {
+            icon: 'https://raw.githubusercontent.com/Potatoii/maysway-BeatBoost/main/logo.jpg',
+            body: message,
+            dir: 'auto'
+        });
+        notification.onclick = function() {
+            window.open('https://vk.com/maysway');
+        };
+    }
+}
+
+
+// Проверить открыто ли какое то расширение
+// chrome.management.getAll(function(info) {
+//     for (var i = 0; i < info.length; i++) {
+//         if (info[i].name == "MW Boost") {
+//             console.log("BeatBoost is installed");
+//         }
+//     }
+// });

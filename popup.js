@@ -20,11 +20,13 @@ async function loadExt() {
         let currentTime = getCurrentTimeSamaraNoApi();
         let currentDate = getCurrentDateSamaraNoApi();
 
-        //currentTime >= "20:15:00" && 
-        if (currentTime <= "23:59:59") {
+        let boostTime = await fetch("https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/boost%20time.json").then(response => response.json());
+
+        // currentTime >= boostTime.startTime && 
+        if (currentTime <= boostTime.endTime) {
             if (startedDate != currentDate && (boostStatus != "not completed" && boostStatus != "undefined" && boostStatus != undefined)) {
                 boostStatus = "not completed";
-                setStorageLocal("boostStatus", "not completed");
+                await setStorageLocal("boostStatus", "not completed");
             }
 
             console.log("status: " + boostStatus);
@@ -122,6 +124,9 @@ async function preLoad() {
     } else {
         document.body.innerHTML = `<div class="container"><h1 style="text-align:center;">Outdated version of the extension.</h1></div>`;
     }
+
+    let lastOpened = Date.now();
+    await setStorageLocal("lastOpened", lastOpened);
 }
 
 preLoad();
@@ -169,7 +174,7 @@ document.getElementById('stop-btn').addEventListener('click', async(event) => {
 startForm.addEventListener('submit', async(event) => {
     event.preventDefault();
 
-
+    document.body.classList.remove('loaded');
 
     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -362,9 +367,39 @@ chrome.runtime.onMessage.addListener(
             document.getElementById('stop-btn').innerText = "Continue";
             document.getElementById('stop-btn').name = "continue";
             document.body.classList.remove("stoping");
+        } else if (request.msg === "started") {
+            document.body.classList.add('loaded');
+        } else if (request.msg === "window blur") {
+
+            // ban chat member
+            // const rawResponse = await fetch('https://api.t-a-a-s.ru/client', {
+            //     method: 'POST',
+            //     headers: {
+            //         'Accept': 'application/json',
+            //         'Content-Type': 'application/json'
+            //     },
+            //     body: JSON.stringify({
+            //         "api_key": randomApiKey(),
+            //         "@type": "banChatMember",
+            //         "chat_id": "-1001523814781",
+            //         "member_id": {
+            //             "@type": "messageSenderUser",
+            //             "user_id": request.data
+            //         },
+            //         "banned_until_date": 0,
+            //         "revoke_messages": true
+            //     })
+            // });
+
+
+
+
         }
     }
 );
+
+
+
 
 
 function setCookie(cname, cvalue, exdays) {
