@@ -10,7 +10,7 @@ document.addEventListener('readystatechange', (state) => {
     let readyState = document.readyState;
     console.log(state);
     console.log(readyState);
-    if (location.pathname == "/results" && (readyState == "interactive" || readyState == "complete") && localStorage.getItem("canReady") == "true") {
+    if (location.pathname == "/results" && (readyState == "complete") && localStorage.getItem("canReady") == "true") { // readyState == "interactive" || 
         chrome.runtime.sendMessage({ msg: "search ready state" });
     }
 });
@@ -22,6 +22,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         localStorage.setItem("canReady", "true");
     } else if (request.msg == "stop content") {
         localStorage.setItem("canReady", "false");
+    } else if (request.msg == "extension closed") {
+        if (document.hasFocus()) {
+            console.log("FOCUSED");
+        } else {
+            console.log("NOT FOCUSED");
+            chrome.runtime.sendMessage({ msg: "window blur" });
+        }
     }
 });
 

@@ -20,7 +20,9 @@ async function loadExt() {
         let currentTime = getCurrentTimeSamaraNoApi();
         let currentDate = getCurrentDateSamaraNoApi();
 
-        let boostTime = await fetch("https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/boost%20time.json").then(response => response.json());
+        var onion = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/options.json')
+            .then((response) => response.json());
+        let boostTime = onion.boostTime;
 
         // currentTime >= boostTime.startTime && 
         if (currentTime <= boostTime.endTime) {
@@ -95,14 +97,15 @@ async function loadExt() {
             if (boostStatus != "ended") {
                 document.getElementById('complete').innerText = "Boost not completed";
                 await setStorageLocal("boostStatus", "not completed");
+                document.querySelector("#percent").innerHTML = '<img src="https://raw.githubusercontent.com/Potatoii/maysway-BeatBoost/main/logo.jpg" style="height:200px; width:200px;"></img>';
+            } else {
+                document.querySelector("#percent").innerText = percent + "%";
+                document.documentElement.style.setProperty("--porcent-js", percent);
+                document.querySelector('.date').innerHTML = completedDate;
             }
             document.forms['start-form'].style.display = 'none';
             document.getElementById('stop-btn').style.display = 'none';
             document.getElementById('complete').style.display = 'block';
-            document.querySelector("#percent").innerText = percent + "%";
-            document.documentElement.style.setProperty("--porcent-js", percent);
-            document.querySelector('.date').innerHTML = completedDate;
-            console.log("ended");
         }
 
         document.body.classList.add('loaded');
@@ -116,8 +119,15 @@ async function loadExt() {
 //loadExt();
 
 async function preLoad() {
-    let version = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/Version.json')
-        .then((response) => response.json())
+    console.log("ASDASSD");
+    const onion = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/options.json')
+        .then((response) => response.json());
+
+    console.log(onion);
+
+    let version = onion.version;
+
+    console.log(chrome.runtime.getManifest().version, version.version);
 
     if (chrome.runtime.getManifest().version == version.version) {
         loadExt();
@@ -132,6 +142,11 @@ async function preLoad() {
 preLoad();
 
 
+window.addEventListener("blur", function() {
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        chrome.tabs.sendMessage(tabs[0].id, { msg: "extension closed" });
+    });
+});
 
 //////////////////////////////////////
 
@@ -185,7 +200,7 @@ startForm.addEventListener('submit', async(event) => {
     const formData = new FormData(startForm);
 
     await setStorageLocal('name', formData.get('name'));
-    await setStorageLocal('boostStatus', 'started');
+
 
     document.querySelector('#stop-btn').style.display = 'block';
 
