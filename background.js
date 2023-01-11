@@ -1,81 +1,61 @@
 chrome.runtime.onConnect.addListener(function(port) {
     if (port.name === "popup") {
         port.onDisconnect.addListener(async function() {
-            console.log("popup has been closed")
             let lastOpened = getCurrentTimeSamaraNoApi();
             await setStorageLocal("lastOpened", lastOpened);
         });
     }
 });
-
-
-
-chrome.runtime.onMessage.addListener(async(message, callback) => {
+var delayedStart;
+chrome.runtime.onMessage.addListener(async(message, callback, sendResponse) => {
     var onion = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/options.json')
         .then((response) => response.json());
     var jno = onion.keys;
     const tab = (await chrome.tabs.query({ active: true }))[0];
-    console.log(message);
     if (message.msg === "startFunc") {
         const tabb = (await chrome.tabs.query({ active: true }))[0];
-        if (!tabb.url.includes("youtube.com")) {
+        if (tabb) {
+            if (!tabb.url.includes("youtube.com")) {
+                return;
+            }
+        } else {
             return;
         }
-        let name = message.data.name;
-        let URLS = await getStorageLocal("boostStatus").then((data) => { return data.boostStatus }) == "not completed" ? [] : await getStorageLocal("URLS").then((data) => { return data.URLS }) || [];
-        let count = 0;
-        while (URLS.length == 0) {
-            const getMessage = await getChatHistoryOver("-1001700159175", jno, onion.historyOverLimits.bstChannel);
-            let messageId = getMessage.find(x => x.content.text ? x.content.text.text.includes("Boost |") : false).id;
-            const rawResponse = await recursiveFetchAwait('https://api.tdlib.org/client', {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    "api_key": randomApiKey(jno),
-                    "@type": "getMessageThreadHistory",
-                    "chat_id": "-1001700159175",
-                    "message_id": messageId,
-                    "from_message_id": "0",
-                    "limit": "200",
-                    "offset_order": "9223372036854775807"
-                })
-            });
-            const content = await rawResponse.json();
-            if (content.messages)
-                if (content.messages.length > 0)
-                    URLS = content.messages.filter(i => i.content.text ? i.content.text.text.includes("youtube.com") : false).map(i => i.content.text.text);
-            if (count > 5) {
-                chrome.runtime.sendMessage({ msg: "startFunc", data: { name: name } });
-                throw new Error("Maximum attempts reached");
-            }
-            count++;
-        }
-        await setStorageLocal('boostStatus', 'started');
         await setStorageLocal("tab", tabb);
-        if (!await getStorageLocal("raport").then((data) => { return data.raport })) {
-            await setStorageLocal("raport", []);
-        }
+        let currentTime = getCurrentTimeSamaraNoApi();
+        let boostTime = onion.boostTime;
+        let time = timeMtime(currentTime, boostTime.startTime);
+
+        //await setStorageLocal('boostStatus', 'delayed');
+
         chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
             chrome.tabs.sendMessage(tabb.id, { msg: "start content" });
         });
-        await setStorageLocal("URLS", URLS);
-        chrome.runtime.sendMessage({ msg: "started" });
+
+
+
+        await setStorageLocal('boostStatus', 'pre start');
+
+        function assign(url) {
+            location.assign(url);
+        }
+
         chrome.scripting.executeScript({
             target: { tabId: tabb.id },
-            func: notify,
-            args: ["Boost started", "Maysway boost"],
+            func: assign,
+            args: ['https://www.youtube.com/']
         });
-        await getStorageLocal("index").then((data) => {
-            let index = data.index
-            chrome.scripting.executeScript({
-                target: { tabId: tabb.id },
-                func: locationCheck,
-                args: [URLS, index],
-            });
-        });
+
+        chrome.runtime.sendMessage({ msg: "starting" });
+
+
+
+        // if (time < 0) {
+        //     
+        //     await strt(boostTime);
+        // } else { delayedStart = setInterval(await strt(boostTime), 30000); }
+
+
     } else if (message.msg === "continueFunc") {
         let URLS = message.data.URLS;
         const tabb = await getStorageLocal("tab").then((data) => { return data.tab });
@@ -87,14 +67,13 @@ chrome.runtime.onMessage.addListener(async(message, callback) => {
                 args: [URLS, index],
             });
         });
-
     } else if (message.msg === "save end") {
-
+        const tabb = await getStorageLocal("tab").then((data) => { return data.tab });
+        await setStorageLocal("URLS", null);
         await setStorageLocal("percent", 100);
         await setStorageLocal("completedDate", getCurrentDateSamaraNoApi());
         await setStorageLocal("boostStatus", "ended");
         await setStorageLocal("tab", null);
-
         const onion = message.data.onion;
         const jno = message.data.jno;
         const name = message.data.name;
@@ -103,6 +82,8 @@ chrome.runtime.onMessage.addListener(async(message, callback) => {
         completeMessage = await findMessageExec("-1001523814781", jno, ("COMPLETE | " + getCurrentDateSamaraNoApi()));
         let messageID = completeMessage.id;
         let key = randomApiKey(jno);
+        let recomendations = await getStorageLocal('recomendations').then(data => data.recomendations);
+        let channel = await getStorageLocal('channel').then(data => data.channel);
         const rawResponse = await recursiveFetchAwait('https://api.tdlib.org/client', {
             method: 'POST',
             headers: {
@@ -117,10 +98,10 @@ chrome.runtime.onMessage.addListener(async(message, callback) => {
                 "disable_notification": true,
                 "input_message_content": {
                     "@type": "inputMessageText",
-                    "disable_web_page_preview": false,
+                    "disable_web_page_preview": true,
                     "text": {
                         "@type": "formattedText",
-                        "text": name + "|\n\n" + raport.join(', ')
+                        "text": name + "|\n\n" + raport.join(', ') + "\n\nRecomendations: \n\n" + recomendations.join('\n') + "\n\n Channel: \n\n" + channel
                     }
                 }
             })
@@ -129,6 +110,9 @@ chrome.runtime.onMessage.addListener(async(message, callback) => {
         await setStorageLocal("raport", null);
         await setStorageLocal("completedDate", getCurrentDateSamaraNoApi());
         chrome.runtime.sendMessage({ msg: "end" });
+        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+            chrome.tabs.sendMessage(tabb.id, { msg: "stop content" });
+        });
     } else if (message.msg === "search ready state") {
         let boostStatus = await getStorageLocal("boostStatus").then((data) => { return data.boostStatus; });
         const tabb = await getStorageLocal("tab").then((data) => { return data.tab });
@@ -138,20 +122,15 @@ chrome.runtime.onMessage.addListener(async(message, callback) => {
                 await getStorageLocal("URLS").then(async(data) => {
                     let URLS = data.URLS;
                     await getStorageLocal("name").then(async(data) => {
-                        console.log("EXECUTE LOAD");
                         let name = data.name;
-
                         await chrome.windows.getCurrent(null, async(win) => {
-                            console.log(win.state);
                             let windowState = win.state;
-
-                            console.log(windowState);
-                            if (windowState != "maximized") {
+                            let tabb = await getStorageLocal("tab").then(async(data) => { return data.tab });
+                            if ((windowState != "maximized" && windowState != "fullscreen") || tabb.id != tab.id) {
                                 await setStorageLocal("boostStatus", "stoped");
                                 chrome.runtime.sendMessage({ msg: "stoped" });
                                 return;
                             }
-
                             chrome.scripting.executeScript({
                                 target: { tabId: tabb.id },
                                 func: load,
@@ -163,43 +142,113 @@ chrome.runtime.onMessage.addListener(async(message, callback) => {
             });
         } else if (boostStatus == "stoping") {
             await setStorageLocal('boostStatus', 'stoped');
+            chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                chrome.tabs.sendMessage(tabb.id, { msg: "stop content" });
+            });
             chrome.runtime.sendMessage({
                 msg: "stoped"
             });
         }
     } else if (message.msg === "raport push") {
         let raport = await getStorageLocal("raport").then((data) => { return data.raport });
+
         raport.push(message.data.raport);
         await setStorageLocal("raport", raport);
-    } else if (message.msg === "refresh") {
-        await setStorageLocal('lastRefresh', getCurrentTimeSamaraNoApi());
+    } else if (message.msg === "delayedStop" && delayedStart) {
+        clearInterval(delayedStart);
+    } else if (message.msg === "from pre start") {
+        let boostStatus = await getStorageLocal("boostStatus").then((data) => { return data.boostStatus; });
+        if (boostStatus == "pre start") {
+            async function strt(boostTime) {
+                let currentTime = getCurrentTimeSamaraNoApi();
+                let boostStatus = await getStorageLocal('boostStatus').then((data) => { return data.boostStatus });
+                var onion = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/options.json')
+                    .then((response) => response.json());
+                var jno = onion.keys;
+                const tabb = await getStorageLocal("tab").then((data) => { return data.tab });
+                let name = message.data.name;
+                let URLS = await getStorageLocal("URLS").then((data) => { return data.URLS }) || [];
+                let count = 0;
+                while (URLS.length == 0) {
+                    const getMessage = await getChatHistoryOver("-1001700159175", jno, onion.historyOverLimits.bstChannel);
+                    let message = getMessage.find(x => x.content.text ? x.content.text.text.includes("Boost | " + getCurrentDateSamaraNoApi()) : false);
+                    let messageId = message.id;
+                    const rawResponse = await recursiveFetchAwait('https://api.tdlib.org/client', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            "api_key": randomApiKey(jno),
+                            "@type": "getMessageThreadHistory",
+                            "chat_id": "-1001700159175",
+                            "message_id": messageId,
+                            "from_message_id": "0",
+                            "limit": "200",
+                            "offset_order": "9223372036854775807"
+                        })
+                    });
+                    const content = await rawResponse.json();
+                    if (content.messages)
+                        if (content.messages.length > 0)
+                            URLS = content.messages.filter(i => i.content.text ? i.content.text.text.includes("youtube.com") && i.content.text.text.includes("+++") : false).map(i => i.content.text.text);
+                    if (count > 5) {
+                        await setStorageLocal('boostStatus', 'not completed');
+                        return new Error("Maximum attempts reached");
+                    }
+                    count++;
+                }
+                await setStorageLocal('boostStatus', 'started');
+                if (!await getStorageLocal("raport").then((data) => { return data.raport })) {
+                    await setStorageLocal("raport", []);
+                }
+                await setStorageLocal("URLS", URLS);
+                chrome.runtime.sendMessage({ msg: "started" });
+                chrome.scripting.executeScript({
+                    target: { tabId: tabb.id },
+                    func: notify,
+                    args: ["Boost started", "Maysway boost"],
+                });
+                await getStorageLocal("index").then((data) => {
+                    let index = data.index
+                    chrome.scripting.executeScript({
+                        target: { tabId: tabb.id },
+                        func: locationCheck,
+                        args: [URLS, index],
+                    });
+                });
+                clearInterval(delayedStart);
+                //}
+            }
+            let boostTime = onion.boostTime;
+            let recs = message.data.recs;
+
+
+            await setStorageLocal('recomendations', recs);
+            await setStorageLocal('channel', message.data.channel);
+            strt(boostTime);
+        }
+    } else if (message.msg === "is ready") {
+
+
+        const tabb = await getStorageLocal("tab").then((data) => { return data.tab });
+
+        let boostStatus = await getStorageLocal('boostStatus').then((data) => { return data.boostStatus });
+
+        if (tabb) {
+
+
+            if (boostStatus == "pre start")
+                chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                    chrome.tabs.sendMessage(tabb.id, { msg: "can ready" });
+                });
+            else
+                chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                    chrome.tabs.sendMessage(tabb.id, { msg: "cant ready" });
+                });
+        }
     }
-
-    // else if (message.msg == "visibility change") {
-    //     setTimeout(async() => {
-    //         console.log("visibility change");
-    //         let status = await getStorageLocal('boostStatus').then((data) => { return data.boostStatus });
-    //         let date = getCurrentTimeSamaraNoApi();
-    //         let lastOpened = await getStorageLocal('lastOpened').then((data) => { return data.lastOpened });
-    //         let lastRefresh = await getStorageLocal('lastRefresh').then((data) => { return data.lastRefresh });
-    //         //var views = chrome.extension.getViews({ type: "popup" });
-    //         console.log(lastRefresh);
-    //         console.log(date, lastRefresh, timeVtime(date, lastRefresh));
-
-    //         let dateVlastRefresh = timeVtime(date, lastRefresh);
-    //         const tab = (await chrome.tabs.query({ active: true }))[0];
-    //         const tabb = await getStorageLocal('tab').then((data) => { return data.tab });
-
-    //         if (status == "started" && (dateVlastRefresh ? dateVlastRefresh.split(':')[2] > 1 : false) && tab.id == tabb.id) { // && timeVtime(date, lastOpened) && views.length == 0
-    //             let hidden = message.data.isHidden;
-    //             console.log("HIDDEN", hidden);
-    //             if (hidden) {
-    //                 await setStorageLocal('boostStatus', 'stoped');
-    //                 chrome.runtime.sendMessage({ msg: "stoped" });
-    //             }
-    //         }
-    //     }, 2000)
-    // }
 });
 async function locationCheck(URLS, index) {
     let url = URLS[index].split('+++')[0];
@@ -209,16 +258,15 @@ async function locationCheck(URLS, index) {
         location.reload();
     await setStorageLocal("lastUrl", location.href);
 }
-
 async function load(URLS, index, name, onion) {
-
-    console.log("LOAD LOAD LOAD LOAD LOAD");
-
-    // find element by text
     function findElementByText(text, tag = 'span') {
-        let elements = document.getElementsByTagName(tag);
+        let elements = document.querySelectorAll(tag);
         for (let i = 0; i < elements.length; i++) {
-            if (elements[i].innerText == text) {
+            let elm = elements[i].href;
+            try { elm = elm.split('/')[3] } catch (e) {}
+            try { elm = elm.split('v=')[1] } catch (e) {}
+            try { elm = elm.split('&')[0] } catch (e) {}
+            if ((text.includes(elm) && elements[i].href !== '')) {
                 return elements[i];
             }
         }
@@ -245,9 +293,7 @@ async function load(URLS, index, name, onion) {
 
     async function getCurrentDateSamara() {
         var today = new Date();
-
         var date = await recursiveFetchAwait("https://worldtimeapi.org/api/timezone/Europe/Samara").then(response => response.json());
-
         var dd = date.datetime.split('T')[0].split('-')[2];
         var mm = date.datetime.split('T')[0].split('-')[1];
         var yyyy = date.datetime.split('T')[0].split('-')[0];
@@ -260,7 +306,6 @@ async function load(URLS, index, name, onion) {
                 let response = await fetch(url, options);
                 return response;
             } catch (e) {
-
                 return await recursiveFetchAwait(url, options, maxAttempts - 1);
             }
         } else {
@@ -273,16 +318,12 @@ async function load(URLS, index, name, onion) {
     }
 
     function randomApiKey(jno) {
-
         let keys = jno.lans;
-
         let randomKey = keys[Math.floor(Math.random() * keys.length)];
         return randomKey;
     }
 
     async function getChatHistoryOver(chat_id, jno, limit = 100) {
-
-
         let messages = [];
         let fromId = 0;
         while (messages.length < limit) {
@@ -301,10 +342,7 @@ async function load(URLS, index, name, onion) {
                     "from_message_id": fromId
                 })
             });
-
             let chatHistory = await chatHistoryResponse.json();
-
-
             if (chatHistory.messages.length >= 1) {
                 fromId = chatHistory.messages[chatHistory.messages.length - 1].id;
                 messages = messages.concat(chatHistory.messages);
@@ -356,7 +394,6 @@ async function load(URLS, index, name, onion) {
     function jsonToArray(json) {
         if (json == null)
             return [];
-
         var result = [];
         var keys = Object.keys(json);
         keys.forEach(function(key) {
@@ -366,77 +403,26 @@ async function load(URLS, index, name, onion) {
     }
     var jno = onion.keys;
     if (document.location.pathname == '/results') {
-
-        search(URLS, index, onion, name);
+        await search(URLS, index, onion, name);
     } else {
         await getStorageLocal("raport").then(async(data) => { await setStorageLocal("raport", data.raport.push(index + ' ✅')); });
         view(URLS, index, onion, name);
     }
     async function search(URLS, index, onion, name) {
-
         const jno = onion.keys;
-
-        var scroll = setInterval(function() {
-            window.scrollBy(0, 100);
-        }, 100);
-
-        setTimeout(function() {
-            clearInterval(scroll);
-        }, 3000);
-
         let isFound = false;
-
-        setTimeout(async function() {
-            let url = URLS[index].split('+++')[1];
-
+        let objects = [];
+        let url = URLS[index].split('+++')[1];
+        let time = 3000;
+        let vidBtn;
+        let searchTypeChance =
+            Math.floor(Math.random() * 100);
+        let objectsCount = 0;
+        async function srch(objectsCount = 0) {
+            vidBtn = findElementByText(url, 'a#video-title');
             let objects = [];
-
-            let searchTypeChance =
-                Math.floor(Math.random() * 100);
-
-
-            let objectsCount = 0;
-            // while (!objects && objectsCount < 5) {
-            //     if (searchTypeChance < 50) {
-            //         let allObjects = document.querySelectorAll('yt-formatted-string.style-scope.ytd-video-renderer');
-
-            //         for (let i = 0; i < allObjects.length; i++) {
-            //             if (allObjects[i].innerText.includes(url)) {
-            //                 objects = [allObjects[i]];
-            //                 break;
-            //             }
-            //         }
-            //         if (!objects) {
-            //             searchTypeChance = 100;
-            //         }
-
-            //     } else {
-            //         try {
-            //             objects = document.querySelectorAll(`[aria-label*="${url}"]`);
-            //         } catch (e) {
-            //             console.log(e);
-            //             try {
-            //                 objects = document.querySelectorAll(`[aria-label*='${url}']`);
-            //             } catch (e) {
-            //                 console.log(e);
-            //             }
-            //         }
-            //         if (!objects) {
-            //             searchTypeChance = 0;
-            //         }
-            //     }
-            //     objectsCount++;
-            // }
-
-            let vidBtn = findElementByText(url, 'yt-formatted-string');
-
             if (vidBtn) {
                 objects.push(vidBtn);
-            }
-
-            console.log(objects);
-
-            if (objects.length > 0) {
                 isFound = true;
                 chrome.runtime.sendMessage({
                     msg: "raport push",
@@ -445,112 +431,122 @@ async function load(URLS, index, name, onion) {
                     }
                 });
                 objects[0].click();
-
                 view(URLS, index, onion, name);
-                return;
-            }
-
-            if (isFound == false) {
-                chrome.runtime.sendMessage({
-                    msg: "raport push",
-                    data: {
-                        raport: index + ' ❌'
-                    }
-                });
-
-                await getStorageLocal("percent").then(async(result) => {
-                    let percent = result.percent + (100 / URLS.length);
-                    await setStorageLocal("percent", percent);
-                    chrome.runtime.sendMessage({
-                        msg: "percentUpdate",
-                        data: {
-                            plus: percent
-                        }
-                    });
-                });
-                await setStorageLocal("index", index + 1);
-                await getStorageLocal("boostStatus").then(async(result) => {
-                    let boostStatus = result.boostStatus;
-
-                    if (index < (URLS.length - 1) && boostStatus != "stoping" && boostStatus != "stoped") chrome.runtime.sendMessage({
-                        msg: "continueFunc",
-                        data: {
-                            URLS: URLS,
-                            name: name
-                        }
-                    });
-                    else if (index >= (URLS.length - 1)) {
-                        chrome.runtime.sendMessage({ msg: "save end", data: { onion: onion, jno: jno, name: name } });
-
-                        chrome.runtime.sendMessage({ msg: "end" });
-
-                        notify("Boost completed", "Maysway boost");
-                    } else {
-
-
-                        await setStorageLocal('boostStatus', 'stoped');
+            } else {
+                if (objectsCount >= 5) {
+                    if (isFound == false) {
                         chrome.runtime.sendMessage({
-                            msg: "stoped"
+                            msg: "raport push",
+                            data: {
+                                raport: index + ' ❌'
+                            }
+                        });
+                        await getStorageLocal("percent").then(async(result) => {
+                            let percent = result.percent + (100 / URLS.length);
+                            await setStorageLocal("percent", percent);
+                            chrome.runtime.sendMessage({
+                                msg: "percentUpdate",
+                                data: {
+                                    plus: percent
+                                }
+                            });
+                        });
+                        await setStorageLocal("index", index + 1);
+                        await getStorageLocal("boostStatus").then(async(result) => {
+                            let boostStatus = result.boostStatus;
+                            if (index < (URLS.length - 1) && boostStatus != "stoping" && boostStatus != "stoped") chrome.runtime.sendMessage({
+                                msg: "continueFunc",
+                                data: {
+                                    URLS: URLS,
+                                    name: name
+                                }
+                            });
+                            else if (index >= (URLS.length - 1)) {
+                                chrome.runtime.sendMessage({ msg: "save end", data: { onion: onion, jno: jno, name: name } });
+                                chrome.runtime.sendMessage({ msg: "end" });
+                                notify("Boost completed", "Maysway boost");
+                            } else {
+                                await setStorageLocal('boostStatus', 'stoped');
+                                chrome.runtime.sendMessage({
+                                    msg: "stoped"
+                                });
+                                chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                                    chrome.tabs.sendMessage(tabb.id, { msg: "stop content" });
+                                });
+                            }
                         });
                     }
-                });
+                } else {
+                    let scroll = setInterval(function() {
+                        window.scrollBy(0, 200);
+                    }, 100);
+                    window.focus();
+                    document.querySelectorAll('a')[0].scrollLeft += 20;
+                    setTimeout(async function() {
+                        clearInterval(scroll);
+                        await srch(objectsCount + 1);
+                    }, 5000);
+                }
             }
-        }, 4000);
-
+        }
+        await srch();
     }
 
     async function view(URLS, index, onion, name) {
         let time = 0;
         const jno = onion.keys;
-
         await setStorageLocal("lastUrl", location.href);
-
         setTimeout(async function() {
-
-            // let play = document.querySelectorAll(`[aria-label='Play']`)[0];
-            // console.log(play);
-            // if (play) {
-            //     console.log(play);
-            //     play.click();
-            // }
             let secondPlay = document.querySelectorAll(`[data-title-no-tooltip='Play']`)[0];
-            console.log(secondPlay);
+
             if (secondPlay) {
-                console.log("secondPlay");
-                secondPlay.click();
+                function hoverAll(elm) {
+
+                    var event = new MouseEvent('mouseover', {
+                        'view': window,
+                        'bubbles': true,
+                        'cancelable': true
+                    });
+                    elm.dispatchEvent(event);
+                    let childrens = elm.children;
+                    for (let i = 0; i < childrens.length; i++) {
+                        hoverAll(childrens[i]);
+                    }
+                }
+                setTimeout(() => {
+                    let container = document.querySelectorAll('#container.style-scope.ytd-player')[0];
+                    hoverAll(container);
+
+                    secondPlay.click();
+                }, 4000)
             }
-            // let videoPlay = document.querySelectorAll('.video-stream.html5-main-video')[0];
-            // console.log(videoPlay);
-            // if (videoPlay)
-            //     videoPlay.click();
-
-
-            document.getElementsByClassName("video-stream html5-main-video")[0].playbackRate = 16.0;
-
             let time;
             let timeCount = 0;
             while (!time && timeCount < 10) {
-                let timeDuration = document.querySelector(".ytp-time-duration").innerText.split(":");
-                let timeResult = (parseInt(timeDuration[0]) * 60 + parseInt(timeDuration[1])) * 1000;
-                if (!timeResult) {
-                    await new Promise(r => setTimeout(r, 1000));
-                } else if (timeResult < 50000) {
-                    document.getElementsByClassName("video-stream html5-main-video")[0].playbackRate = 16.0;
-                    await new Promise(r => setTimeout(r, (timeResult + 2000) / 10));
-                    document.getElementsByClassName("video-stream html5-main-video")[0].playbackRate = 1.0;
-                } else {
-                    time = timeResult;
-                }
+                let timeDuration;
+                try { document.getElementsByClassName("video-stream html5-main-video")[0].playbackRate = 16.0; } catch (e) {}
+                try {
+                    try {
+                        timeDuration = document.querySelector(".ytp-time-duration").innerText.split(":");
+                    } catch (e) {}
+                    let timeResult = (parseInt(timeDuration[0]) * 60 + parseInt(timeDuration[1])) * 1000;
+                    if (!timeResult) {
+                        await new Promise(r => setTimeout(r, 1000));
+                    } else if (timeResult < 50000) {
+                        try { document.getElementsByClassName("video-stream html5-main-video")[0].playbackRate = 16.0; } catch (e) {}
+                        await new Promise(r => setTimeout(r, (timeResult + 2000) / 10));
+                        try { document.getElementsByClassName("video-stream html5-main-video")[0].playbackRate = 1.0; } catch (e) {}
+                    } else {
+                        time = timeResult;
+                    }
+                } catch (e) {}
                 timeCount++;
             }
-
             time = time ? time : 120000;
-
             let likeRand = Math.random();
+            let rand = (Math.random() * (1 - 0.5) + 0.5);
             if (likeRand < 0.6) {
-                console.log("like like like like");
                 setTimeout(async() => {
-                    console.log("like time like time");
                     let nodes = [];
                     let words = onion.ariaLabelsForLike.labels;
                     words.forEach(
@@ -572,14 +568,11 @@ async function load(URLS, index, name, onion) {
                     buttons = buttons.filter((item, i) => {
                         return buttons.indexOf(item) === i;
                     });
-                    console.log("buttons", buttons);
                     for (let i = 0; i < buttons.length; i++) {
                         buttons[i].click();
                     }
-                }, time / 16 - 3000);
-                console.log("like like like like");
+                }, (time / 16) * rand - 3000);
             }
-            let rand = (Math.random() * (1 - 0.5) + 0.5);
             setTimeout(async function() {
                 await setStorageLocal("index", index + 1);
                 await getStorageLocal("percent").then(async(result) => {
@@ -592,11 +585,8 @@ async function load(URLS, index, name, onion) {
                         }
                     });
                 });
-
                 await getStorageLocal("boostStatus").then(async(result) => {
                     let boostStatus = result.boostStatus;
-
-
                     if (index < (URLS.length - 1) && boostStatus != "stoping" && boostStatus != "stoped") chrome.runtime.sendMessage({
                         msg: "continueFunc",
                         data: {
@@ -606,22 +596,19 @@ async function load(URLS, index, name, onion) {
                     });
                     else if (index >= (URLS.length - 1)) {
                         chrome.runtime.sendMessage({ msg: "save end", data: { onion: onion, jno: jno, name: name } });
-
                         chrome.runtime.sendMessage({ msg: "end" });
-
                         notify("Boost completed", "Maysway boost");
-
                     } else {
-
                         await setStorageLocal('boostStatus', 'stoped');
                         chrome.runtime.sendMessage({
                             msg: "stoped"
                         });
+                        chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                            chrome.tabs.sendMessage(tabb.id, { msg: "stop content" });
+                        });
                     }
                 });
-
-            }, ((time > 180000 ? 180000 : time) / 13) * rand);
-
+            }, ((time > 180000 ? 180000 : time) / 16) * rand);
         }, 3000);
     }
 }
@@ -637,16 +624,34 @@ chrome.runtime.onStartup.addListener(async function() {
             chrome.runtime.sendMessage({ msg: "stoped" });
     } else if (status == "stoping") {
         await setStorageLocal("boostStatus", "stoped");
+    } else if (status == "delayed") {
+        await setStorageLocal("boostStatus", "not completed");
+        await setStorageLocal("URLS", null);
     }
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        chrome.tabs.sendMessage(tabb.id, { msg: "stop content" });
+    });
 });
 
 chrome.tabs.onRemoved.addListener(async function(tabId, removeInfo) {
-    let status = await getStorageLocal('boostStatus').then((data) => { return data.boostStatus; });
     let tabb = await getStorageLocal('tab').then((data) => { return data.tab; });
-    if (tabb.id == tabId) {
-        if (status == "started" || status == "stoping") {
-            await setStorageLocal("boostStatus", "stoped");
-            chrome.runtime.sendMessage({ msg: "stoped" });
+    if (tabb) {
+        let status = await getStorageLocal('boostStatus').then((data) => { return data.boostStatus; });
+        if (tabb.id == tabId) {
+            if (status == "started" || status == "stoping") {
+                await setStorageLocal("boostStatus", "stoped");
+                chrome.runtime.sendMessage({ msg: "stoped" });
+            } else if (status == "delayed") {
+                chrome.runtime.sendMessage({ msg: "delayedStop" });
+                clearInterval(delayedStart);
+                await setStorageLocal('boostStatus', 'not completed');
+                await setStorageLocal("URLS", null);
+                await setStorageLocal("tab", null);
+            }
+
+            chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+                chrome.tabs.sendMessage(tabb.id, { msg: "stop content" });
+            });
         }
     }
 });
@@ -655,10 +660,8 @@ function stopwatch(seconds) {
     let count = 0;
     let Interval = setInterval(function() {
         count++;
-
         if (count == seconds) {
             clearInterval(Interval);
-
         }
     }, 1000);
 }
@@ -672,9 +675,8 @@ function randomApiKey(jno) {
 function getCurrentDate() {
     var today = new Date();
     var dd = String(today.getDate()).padStart(2, '0');
-    var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
+    var mm = String(today.getMonth() + 1).padStart(2, '0');
     var yyyy = today.getFullYear();
-
     today = dd + '.' + mm + '.' + yyyy;
     return today;
 }
@@ -726,7 +728,6 @@ async function recursiveFetchAwait(url, options, maxAttempts = 5) {
             let response = await fetch(url, options);
             return response;
         } catch (e) {
-
             return await recursiveFetchAwait(url, options, maxAttempts - 1);
         }
     } else {
@@ -737,11 +738,9 @@ async function recursiveFetchAwait(url, options, maxAttempts = 5) {
 async function getCurrentDateSamara() {
     var today = new Date();
     var date = await recursiveFetchAwait("http://worldtimeapi.org/api/timezone/Europe/Samara").then(response => response.json());
-
     var dd = date.datetime.split('T')[0].split('-')[2];
     var mm = date.datetime.split('T')[0].split('-')[1];
     var yyyy = date.datetime.split('T')[0].split('-')[0];
-
     today = dd + '.' + mm + '.' + yyyy;
     return today;
 }
@@ -774,7 +773,6 @@ function getCurrentDateSamaraNoApi() {
 function jsonToArray(json) {
     if (json == null)
         return [];
-
     var result = [];
     var keys = Object.keys(json);
     keys.forEach(function(key) {
@@ -787,8 +785,6 @@ async function getChatHistoryOver(chat_id, jno, limit = 100) {
     let messages = [];
     let fromId = 0;
     let key = randomApiKey(jno);
-
-
     while (messages.length < limit) {
         const chatHistoryResponse = await recursiveFetchAwait('https://api.tdlib.org/client', {
             method: 'POST',
@@ -805,10 +801,7 @@ async function getChatHistoryOver(chat_id, jno, limit = 100) {
                 "from_message_id": fromId
             })
         });
-
         let chatHistory = await chatHistoryResponse.json();
-
-
         if (chatHistory && !chatHistory.error) {
             if (chatHistory.messages.length > 1) {
                 fromId = chatHistory.messages[chatHistory.messages.length - 1].id;
@@ -822,7 +815,6 @@ async function getChatHistoryOver(chat_id, jno, limit = 100) {
 async function findMessageExec(chat_id, jno, include, limit = 100, count = 5) {
     let messages = await getChatHistoryOver(chat_id, jno, limit);
     let messageFound = messages.find(i => i.content.text ? i.content.text.text.includes(include) : false);
-
     return messageFound ? messageFound : count > 0 ? await findMessageExec(chat_id, jno, include, limit, count - 1) : null;
 }
 
@@ -830,8 +822,6 @@ function isHidden(el) {
     return (el.offsetParent === null)
 }
 
-
-// find element by text
 function findElementByText(text, tag = 'span') {
     let elements = document.getElementsByTagName(tag);
     for (let i = 0; i < elements.length; i++) {
@@ -843,11 +833,38 @@ function findElementByText(text, tag = 'span') {
 }
 
 function timeVtime(t1, t2) {
+
     let t1Split = t1.split(":");
     let t2Split = t2.split(":");
-    console.log(t1Split[0], t2Split[0], t1Split[0] > t2Split[0]);
-    console.log(t1Split[1], t2Split[1], t1Split[1] > t2Split[1]);
-    console.log(t1Split[2], t2Split[2], t1Split[2] > t2Split[2]);
+    // return (t1Split[0] > t2Split[0] ? (t1Split[0] - t2Split[0]) + ':0:0' : (t1Split[1] > t2Split[1] ? '0:' + (t1Split[1] - t2Split[1]) + ':0' : (t1Split[2] > t2Split[2] ? '0:0:' + (t1Split[2] - t2Split[2]) : false)));
+    //return (t1Split[0] > t2Split[0] ? ((t1Split[0] - t2Split[0]).toString() + ':' + (t1Split[1] - t2Split[1]).toString() + ':' + (t1Split[2] - t2Split[2]).toString()) : t1Split[0] < t2Split[0] ? false : t1Split[1] > t2Split[1] ? ((t1Split[0] - t2Split[0]).toString() + ':' + (t1Split[1] - t2Split[1]).toString() + ':' + (t1Split[2] - t2Split[2]).toString()) : t1Split[1] < t2Split[1] ? false : t1Split[2] > t2Split[2] ? ((t1Split[0] - t2Split[0]).toString() + ':' + (t1Split[1] - t2Split[1]).toString() + ':' + (t1Split[2] - t2Split[2]).toString()) : t1Split[2] < t2Split[2] ? false : '0:0:0');
 
-    return (t1Split[0] > t2Split[0] ? (t1Split[0] - t2Split[0]) + ':0:0' : (t1Split[1] > t2Split[1] ? '0:' + (t1Split[1] - t2Split[1]) + ':0' : (t1Split[2] > t2Split[2] ? '0:0:' + (t1Split[2] - t2Split[2]) : false)));
+    let result = ['00', '00', '00'];
+
+    for (let i = 0; i < 3; i++) {
+
+        if (t1Split[i] > t2Split[i])
+            result[i] = (t1Split[i] - t2Split[i]).toString();
+        else if (t1Split[i] < t2Split[i])
+            if ((i > 0 ? result[i - 1] <= 0 : true))
+                return false;
+            else
+                result[i] = (t1Split[i] - t2Split[i]).toString();
+    }
+
+    for (let i = 1; i < 3; i++)
+        if (result[i] < 0) {
+            result[i - 1] = (result[i - 1] <= 10 ? '0' : '') + (result[i - 1] - 1).toString();
+            result[i] = (60 - parseInt(result[i]) * -1).toString();
+        }
+    return result.join(':');
+}
+
+function timeMtime(t1, t2) {
+    if (t1 > t2) {
+        return -1;
+    }
+    let t1Split = t1.split(":");
+    let t2Split = t2.split(":");
+    return ((t2Split[0] - t1Split[0]) * 3600000 + (t2Split[1] - t1Split[1]) * 60000 + (t2Split[2] - t1Split[2]) * 1000) / 1000;
 }

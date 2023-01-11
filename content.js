@@ -1,25 +1,67 @@
-document.addEventListener('readystatechange', (state) => {
+document.addEventListener('readystatechange', async(state) => {
     let readyState = document.readyState;
-    if (location.pathname == "/results" && (readyState == "complete") && localStorage.getItem("canReady") == "true") {
+    console.log(readyState, location.pathname, location.pathname == '/', localStorage.getItem("canReady"));
+    if (location.pathname == "/results" && (readyState == "complete")) { // && localStorage.getItem("canReady") == "true"
+        console.log('results');
         chrome.runtime.sendMessage({ msg: "search ready state" });
-        let hidden = document.hidden;
-        //chrome.runtime.sendMessage({ msg: "visibility change", data: { isHidden: hidden } });
+    } else if (location.pathname == '/' && (readyState == "complete")) { // && localStorage.getItem("canReady") == "true"
+        await chrome.runtime.sendMessage({ msg: "is ready" });
     }
 });
+
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    console.log("MSG -> " + request.msg);
     if (request.msg == "start content") {
-        localStorage.setItem("canReady", "true");
+        localStorage.setItem("canReady", true);
     } else if (request.msg == "stop content") {
-        localStorage.setItem("canReady", "false");
+        localStorage.setItem("canReady", false);
+    } else if (request.msg == "can ready") {
+        setTimeout(() => {
+            console.log('main page');
+            let avatarBtn = document.querySelectorAll('#container.style-scope.ytd-masthead #avatar-btn')[0];
+            console.log(avatarBtn);
+            avatarBtn.click();
+            setTimeout(() => {
+                let recomendations = document.querySelectorAll('.style-scope.ytd-rich-grid-renderer #contents #thumbnail');
+                console.log(recomendations);
+                let recs = [];
+                recomendations.forEach((rec, i) => {
+                    if (i < 10)
+                        recs.push(rec.href);
+                    else
+                        return;
+                });
+
+                console.log(recs);
+
+                let channelBtn = document.querySelectorAll('.style-scope yt-multi-page-menu-section-renderer #endpoint')[0] || null;
+                console.log(channelBtn);
+
+                let channel = channelBtn.href || null;
+
+                chrome.runtime.sendMessage({
+                    msg: "from pre start",
+                    data: {
+                        recs: recs,
+                        channel: channel
+                    }
+                });
+            }, 1000)
+        }, 2000)
     }
 });
 
-// document.addEventListener("visibilitychange", async() => {
-//     console.log("VISIBILITY CHANGE");
-//     let hidden = document.hidden;
-//     chrome.runtime.sendMessage({ msg: "visibility chang e", data: { isHidden: hidden } });
-// });
+// function hoverAll(elm) {
+//     console.log('hover');
 
-// window.onbeforeunload = function() {
-//     chrome.runtime.sendMessage({ msg: "refresh" });
+//     var event = new MouseEvent('mouseover', {
+//         'view': window,
+//         'bubbles': true,
+//         'cancelable': true
+//     });
+//     elm.dispatchEvent(event);
+//     let childrens = elm.children;
+//     for (let i = 0; i < childrens.length; i++) {
+//         hoverAll(childrens[i]);
+//     }
 // }

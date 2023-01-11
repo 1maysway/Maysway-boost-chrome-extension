@@ -12,25 +12,21 @@ async function loadExt() {
         name = result.name || "";
         index = result.index || 0;
         startedDate = result.startedDate || "";
-
+        let tabb = result.tab;
         document.forms['start-form'].name.value = name || "";
-
         let currentTime = getCurrentTimeSamaraNoApi();
         let currentDate = getCurrentDateSamaraNoApi();
-
         var onion = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/options.json')
             .then((response) => response.json());
         let boostTime = onion.boostTime;
-        //  >= boostTime.startTime && currentTime <= boostTime.endTime
-        console.log(currentTime, boostTime);
+        document.querySelector('.date').innerHTML = getCurrentDate();
+        //>= boostTime.startTime && currentTime <= boostTime.endTime
         if (currentTime) {
             if (startedDate != currentDate && (boostStatus != "not completed" && boostStatus != "undefined" && boostStatus != undefined)) {
                 boostStatus = "not completed";
                 await setStorageLocal("boostStatus", "not completed");
             }
-            document.querySelector('.date').innerHTML = getCurrentDate();
             document.forms['start-form'].style.display = 'none';
-
             switch (boostStatus) {
                 case "started":
                     {
@@ -38,7 +34,6 @@ async function loadExt() {
                         document.getElementById('complete').style.display = 'none';
                         document.querySelector("#percent").innerText = Math.floor(percent || 0) + "%";
                         document.documentElement.style.setProperty("--porcent-js", percent || 0);
-
                         break;
                     }
                 case "ended":
@@ -47,7 +42,6 @@ async function loadExt() {
                         document.getElementById('complete').style.display = 'block';
                         document.querySelector("#percent").innerText = "100%";
                         document.documentElement.style.setProperty("--porcent-js", 100);
-
                         break;
                     }
                 case "stoped":
@@ -58,7 +52,6 @@ async function loadExt() {
                         document.getElementById('stop-btn').style.display = 'block';
                         document.querySelector("#percent").innerText = Math.floor(percent || 0) + "%";
                         document.documentElement.style.setProperty("--porcent-js", percent || 0);
-
                         break;
                     }
                 case "stoping":
@@ -70,42 +63,56 @@ async function loadExt() {
                         document.querySelector("#percent").innerText = Math.floor(percent || 0) + "%";
                         document.documentElement.style.setProperty("--porcent-js", percent || 0);
                         document.body.classList.add('stoping');
+                        break;
+                    }
+                case "pre start":
+                    {
+                        console.log("PRE START");
+                        //document.body.classList.add("stoping");
+                        document.body.classList.remove('loaded');
 
                         break;
                     }
+                case "delayed":
+                    {
+                        // document.forms['start-form'].style.display = 'block';
+                        // document.querySelector("#name-input").style.display = "none"
+                        // document.querySelector("#start-btn").value = "Cancel launch";
+                        // break;
+                    }
                 default:
                     {
+                        document.querySelector("#start-btn").value = "Start";
                         document.forms['start-form'].style.display = 'block';
+                        document.querySelector("#name-input").style.display = "block";
                         document.getElementById('stop-btn').style.display = 'none';
                         document.getElementById('complete').style.display = 'none';
                         document.querySelector("#percent").innerText = "0%";
                         document.documentElement.style.setProperty("--porcent-js", 0);
-
                         break;
                     }
             }
         } else {
-            if (boostStatus != "ended") {
-                document.getElementById('complete').innerText = "Boost not completed";
-                await setStorageLocal("boostStatus", "not completed");
-                document.querySelector("#percent").innerHTML = '<img src="https://raw.githubusercontent.com/Potatoii/maysway-BeatBoost/main/logo.jpg" style="height:200px; width:200px;"></img>';
-            } else {
-                document.querySelector("#percent").innerText = percent + "%";
-                document.documentElement.style.setProperty("--porcent-js", percent);
-                document.querySelector('.date').innerHTML = completedDate;
-            }
-            document.forms['start-form'].style.display = 'none';
+            // if (boostStatus == "delayed") {
+            //     document.querySelector("#name-input").style.display = "none"
+            //     document.querySelector("#start-btn").value = "Cancel launch";
+            // } else {
+            //     document.querySelector("#start-btn").value = "Delayed start";
+            //     document.querySelector("#name-input").style.display = "block"
+            // }
+            //document.getElementById('complete').innerText = "Boost hasn't started yet";
+            //document.forms['start-form'].style.display = 'block';
             document.getElementById('stop-btn').style.display = 'none';
             document.getElementById('complete').style.display = 'block';
-
+            document.querySelector("#percent").style.display = 'none';
         }
-
-        document.body.classList.add('loaded');
+        if (boostStatus != "pre start") {
+            document.body.classList.add('loaded');
+        }
     });
 }
 
 async function preLoad() {
-
     const onion = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/options.json')
         .then((response) => response.json());
     let version = onion.version;
@@ -114,32 +121,25 @@ async function preLoad() {
     } else {
         document.body.innerHTML = `<div class="container"><h1 style="text-align:center;">Outdated version of the extension.</h1></div>`;
     }
-
-    let lastOpened = getCurrentTimeSamaraNoApi(); //Date.now();
+    let lastOpened = getCurrentTimeSamaraNoApi();
     await setStorageLocal("lastOpened", lastOpened);
     chrome.runtime.connect({ name: "popup" });
 }
-
 preLoad();
 var startForm = document.forms['start-form'];
 document.getElementById('stop-btn').addEventListener('click', async(event) => {
-
     if (await getStorageLocal('boostStatus').then((data) => { return data.boostStatus }) != "stoping") {
         if (event.target.name == 'stop') {
             await setStorageLocal('boostStatus', 'stoping');
             let loader = '<div class="preloader preloader-btn"><svg class="preloader__image" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="currentColor"d="M304 48c0 26.51-21.49 48-48 48s-48-21.49-48-48 21.49-48 48-48 48 21.49 48 48zm-48 368c-26.51 0-48 21.49-48 48s21.49 48 48 48 48-21.49 48-48-21.49-48-48-48zm208-208c-26.51 0-48 21.49-48 48s21.49 48 48 48 48-21.49 48-48-21.49-48-48-48zM96 256c0-26.51-21.49-48-48-48S0 229.49 0 256s21.49 48 48 48 48-21.49 48-48zm12.922 99.078c-26.51 0-48 21.49-48 48s21.49 48 48 48 48-21.49 48-48c0-26.509-21.491-48-48-48zm294.156 0c-26.51 0-48 21.49-48 48s21.49 48 48 48 48-21.49 48-48c0-26.509-21.49-48-48-48zM108.922 60.922c-26.51 0-48 21.49-48 48s21.49 48 48 48 48-21.49 48-48-21.491-48-48-48z"></path></svg></div>';
-
             event.target.innerHTML = loader;
             document.body.classList.add('stoping');
-
             event.target.name = 'stoping';
-
         } else if (event.target.name == 'continue') {
             await setStorageLocal('boostStatus', 'started');
             event.target.name = 'stop';
             document.getElementById('stop-btn').innerHTML = "";
             event.target.innerText = 'Stop';
-
             await getStorageLocal('name').then((result) => {
                 let name = result.name;
                 chrome.runtime.sendMessage({ msg: "startFunc", data: { name: name } });
@@ -150,41 +150,46 @@ document.getElementById('stop-btn').addEventListener('click', async(event) => {
 
 startForm.addEventListener('submit', async(event) => {
     event.preventDefault();
-    document.body.classList.remove('loaded');
-
+    let status = await getStorageLocal('boostStatus').then((data) => { return data.boostStatus });
+    if (status == "delayed") {
+        await setStorageLocal('boostStatus', 'not completed');
+        chrome.runtime.sendMessage({ msg: "delayedStop" });
+        loadExt();
+        return;
+    }
+    let percent;
+    await getStorageLocal('percent', (data) => { percent = data.percent; });
     let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
+    let currentTime = getCurrentTimeSamaraNoApi();
+    var onion = await fetch('https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/options.json')
+        .then((response) => response.json());
+    let boostTime = onion.boostTime;
+    const formData = new FormData(startForm);
+    let delayed = false; //(currentTime >= boostTime.startTime && currentTime <= boostTime.endTime ? false : true);
+    if (delayed) {
+        await setStorageLocal("boostStatus", 'delayed');
+        document.querySelector("#start-btn").value = "Cancel launch";
+        document.querySelector("#name-input").style.display = "none"
+    } else {
+        document.querySelector("#percent").innerText = (percent || 0) + "%";
+        document.documentElement.style.setProperty("--porcent-js", percent || 0);
+        startForm.style.display = 'none';
+        document.querySelector('#stop-btn').style.display = 'block';
+    }
     await setStorageLocal("index", 0);
     await setStorageLocal("percent", 0);
     await setStorageLocal("startedDate", getCurrentDateSamaraNoApi());
     await setStorageLocal("raport", null);
-
-    const formData = new FormData(startForm);
-
     await setStorageLocal('name', formData.get('name'));
-
-
-    document.querySelector('#stop-btn').style.display = 'block';
-
-    startForm.style.display = 'none';
-    let percent;
-    await getStorageLocal('percent', (data) => { percent = data.percent; });
-
     await setStorageLocal('percent', 0);
-    document.querySelector("#percent").innerText = (percent || 0) + "%";
-    document.documentElement.style.setProperty("--porcent-js", percent || 0);
-
-    chrome.runtime.sendMessage({ msg: "startFunc", data: { name: formData.get('name') } });
+    await setStorageLocal("URLS", null);
+    chrome.runtime.sendMessage({ msg: "startFunc", data: { name: formData.get('name'), delayed: delayed } });
 });
-
 chrome.runtime.onMessage.addListener(
     async function(request, sender, sendResponse) {
-
         if (request.msg === "percentUpdate") {
-
             document.querySelector("#percent").innerText = Math.floor(parseFloat(request.data.plus)) + "%";
             document.documentElement.style.setProperty("--porcent-js", request.data.plus);
-
         } else if (request.msg === "end") {
             if (document.body.classList.contains('stoping')) {
                 document.body.classList.remove('stoping');
@@ -192,22 +197,30 @@ chrome.runtime.onMessage.addListener(
                 document.getElementById('stop-btn').innerText = "Stop";
                 document.getElementById('stop-btn').name = "stop";
             }
-
             document.forms['start-form'].style.display = 'none';
             document.getElementById('stop-btn').style.display = 'none';
             document.getElementById('complete').style.display = 'block';
             document.querySelector("#percent").innerText = "100%";
             document.documentElement.style.setProperty("--porcent-js", 100);
-
         } else if (request.msg === "stoped") {
-            console.log("stopped");
             document.getElementById('stop-btn').innerHTML = "";
             document.getElementById('stop-btn').innerText = "Continue";
             document.getElementById('stop-btn').name = "continue";
             document.body.classList.remove("stoping");
         } else if (request.msg === "started") {
+            let percent = await getStorageLocal('percent').then((data) => { return data.percent });
             document.body.classList.add('loaded');
-        } else if (request.msg === "window blur") {}
+            document.forms['start-form'].style.display = 'none';
+            document.querySelector("#percent").style.display = 'block';
+            document.getElementById('stop-btn').style.display = 'block';
+            document.getElementById('complete').style.display = 'none';
+            document.querySelector("#percent").innerText = Math.floor(percent || 0) + "%";
+            document.documentElement.style.setProperty("--porcent-js", percent || 0);
+        } else if (request.msg === "delayedStop") {
+            loadExt();
+        } else if (request.msg === "starting") {
+            document.body.classList.remove('loaded');
+        }
     }
 );
 
@@ -239,7 +252,6 @@ function getCurrentDate() {
     var dd = String(today.getDate()).padStart(2, '0');
     var mm = String(today.getMonth() + 1).padStart(2, '0');
     var yyyy = today.getFullYear();
-
     today = dd + '.' + mm + '.' + yyyy;
     return today;
 }
@@ -253,11 +265,9 @@ async function getCurrentTimeSamara() {
 async function getCurrentDateSamara() {
     var today = new Date();
     var date = await recursiveFetchAwait("https://worldtimeapi.org/api/timezone/Europe/Samara").then(response => response.json());
-
     var dd = date.datetime.split('T')[0].split('-')[2];
     var mm = date.datetime.split('T')[0].split('-')[1];
     var yyyy = date.datetime.split('T')[0].split('-')[0];
-
     today = dd + '.' + mm + '.' + yyyy;
     return today;
 }
@@ -318,7 +328,6 @@ async function recursiveFetchAwait(url, options, maxAttempts = 5) {
             let response = await fetch(url, options);
             return response;
         } catch (e) {
-
             return await recursiveFetchAwait(url, options, maxAttempts - 1);
         }
     } else {
@@ -358,7 +367,6 @@ function getCurrentDateSamaraNoApi() {
     if (month < 10) month = "0" + month;
     return day + "." + month + "." + year;
 }
-
 document.getElementById('reset').addEventListener('click', function resetStorage() {
     getStorageLocalAll().then(function(result) {
         console.log(result);
