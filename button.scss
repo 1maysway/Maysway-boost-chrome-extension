@@ -45,7 +45,8 @@ $buttonsize: 250px;
     stroke-width: 10;
     stroke-dasharray: 440;
     stroke-dashoffset: 440;
-    stroke: hsl(0, 0%, 0%);
+    // stroke: hsl(0, 0%, 0%);
+    stroke: white;
     stroke-linecap: round;
     transform: translate(5px, 5px); // stroke-width / 2
 }
@@ -68,7 +69,8 @@ $buttonsize: 250px;
     height: auto;
     width: auto;
     padding: 0.25em 0.5em;
-    color: hsl(0, 0%, 0%);
+    // color: hsl(0, 0%, 0%);
+    color: white;
     font-family: Arial, Helvetica, sans-serif;
     border-radius: 0.25em;
     transform: translate(-50%, -50%) rotate(90deg);
@@ -86,6 +88,10 @@ $buttonsize: 250px;
     }
 }
 
+#percent {
+    color: white;
+}
+
 .container {
     width: 350px;
     height: 500px;
@@ -94,6 +100,9 @@ $buttonsize: 250px;
     align-items: center;
     flex-direction: column;
     justify-content: space-around;
+    background-color: rgb(0, 0, 0);
+    color: rgb(242, 116, 39);
+    border: 1px solid white;
     .title {
         width: 100%;
         display: flex;
@@ -102,9 +111,9 @@ $buttonsize: 250px;
         font-size: 48px;
         font-family: 'font';
         img {
-            object-fit: contain;
-            width: 100%;
-            height: 100%;
+            object-fit: cover;
+            width: 100px;
+            height: 100px;
         }
     }
     .ext-btn {
@@ -113,7 +122,7 @@ $buttonsize: 250px;
         cursor: pointer;
         border: 2px solid black;
         background-color: black !important;
-        color: white;
+        color: rgb(242, 116, 39);
         font-size: 24px;
         font-family: 'font';
         border-radius: 0 !important;
@@ -121,9 +130,13 @@ $buttonsize: 250px;
         display: flex;
         align-items: center;
         justify-content: center;
+        // background-color: white !important;
+        // border: 1px solid white;
     }
     #stop-btn {
         display: none;
+        // background-color: white !important;
+        padding: 0 !important;
     }
     .start-form {
         display: none;
@@ -137,6 +150,10 @@ $buttonsize: 250px;
             border: 1px solid black;
             padding: 10px;
             margin: 20px 0;
+            background-color: black;
+            border: 1px solid white;
+            border-radius: 5px;
+            color: white;
         }
     }
     .date {
@@ -156,18 +173,19 @@ $buttonsize: 250px;
 
 .button-click {
     border-radius: 35%;
-    box-shadow: inset 0 0 35px 0px rgba(0, 0, 0, 0.25), inset 0 2px 1px 1px rgba(255, 255, 255, 0), 1px 1px 15px 2px rgba(154, 137, 164, 0.5);
-    text-shadow: 1px -1px 3px rgb(87, 207, 197), -1px 1px 3px rgb(199, 146, 181);
+    // box-shadow: inset 0 0 35px 0px rgba(0, 0, 0, 0.25), inset 0 2px 1px 1px rgba(255, 255, 255, 0), 1px 1px 15px 2px rgba(154, 137, 164, 0.5);
+    // text-shadow: 1px -1px 3px rgb(87, 207, 197), -1px 1px 3px rgb(199, 146, 181);
+    box-shadow: 0px 0px 40px 5px rgba(255, 255, 255, 0.5);
     outline: none;
     -webkit-transition: box-shadow 0.4s, text-shadow 0.5s;
     -moz-transition: box-shadow 0.4s, text-shadow 0.5s;
     transition: box-shadow 0.4s, text-shadow 0.5s;
     &:hover {
         cursor: pointer;
-        box-shadow: inset 0 0 35px 0px rgba(0, 0, 0, 0.15), inset 0 2px 1px 1px rgba(255, 255, 255, 0), 1px 1px 15px 2px rgba(154, 137, 164, 0.1);
-        text-shadow: 3px -3px 5px rgba(143, 162, 199, 1), -3px 3px 5px rgba(192, 151, 178, 1);
-        -webkit-transition: box-shadow 0.4s, text-shadow 0.5s;
-        -moz-transition: box-shadow 0.4s, text-shadow 0.5s;
+        // box-shadow: inset 0 0 35px 0px rgba(0, 0, 0, 0.15), inset 0 2px 1px 1px rgba(255, 255, 255, 0), 1px 1px 15px 2px rgba(154, 137, 164, 0.1);
+        // text-shadow: 3px -3px 5px rgba(143, 162, 199, 1), -3px 3px 5px rgba(192, 151, 178, 1);
+        // -webkit-transition: box-shadow 0.4s, text-shadow 0.5s;
+        // -moz-transition: box-shadow 0.4s, text-shadow 0.5s;
         transition: box-shadow 0.4s, text-shadow 0.5s;
         color: white !important;
     }
@@ -178,8 +196,9 @@ $buttonsize: 250px;
     position: fixed;
     overflow: hidden;
     /* фоновый цвет */
-    background: white;
+    background: black;
     z-index: 1001;
+    border: 1px solid white;
 }
 
 .preloader__image {
@@ -235,6 +254,10 @@ $buttonsize: 250px;
         right: 0;
         top: 0;
         bottom: 0;
+        color: white;
+        #path {
+            color: white;
+        }
     }
 }
 
