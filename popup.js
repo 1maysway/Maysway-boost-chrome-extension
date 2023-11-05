@@ -6,6 +6,7 @@ async function loadExt() {
     let name;
     let index;
     let startedDate;
+    // await chrome.runtime.sendMessage({ msg: "clearCookie", data: { domain: ".youtube.com", url: "https://www.youtube.com" } });
     await getStorageLocalAll().then(async function(result) {
         percent = result.percent || 0;
         completedDate = result.completedDate || "";
@@ -186,6 +187,8 @@ async function CheckLocation(loc = "US") {
 }
 
 async function preLoad() {
+    const options = await fetch('./options.json').then(res => res.json());
+
     document.body.classList.remove("loaded");
     const onion = await fetch(
         "https://raw.githubusercontent.com/1maysway/maysway-BeatBoost/main/options.json"
@@ -206,14 +209,15 @@ async function preLoad() {
     let IsUs = await CheckLocation();
     console.log(IsUs);
     IsUs = IsUs.isInLocation;
+    console.log(options);
     console.log(chrome.runtime.getManifest().version, version.version);
     if (
-        chrome.runtime.getManifest().version == version.version &&
-        IsUs &&
-        WEB_Rtc_Shield &&
-        WEB_Rtc_Shield.enabled &&
-        adblock &&
-        adblock.enabled
+        (chrome.runtime.getManifest().version == version.version &&
+            IsUs &&
+            WEB_Rtc_Shield &&
+            WEB_Rtc_Shield.enabled &&
+            adblock &&
+            adblock.enabled) || options.develop
     ) {
         console.log('load ext');
         loadExt();
@@ -521,10 +525,3 @@ function getCurrentDateSamaraNoApi() {
     if (month < 10) month = "0" + month;
     return day + "." + month + "." + year;
 }
-
-document
-    .getElementById("reset")
-    .addEventListener("click", function resetStorage() {
-        getStorageLocalAll().then(function(result) {});
-        chrome.storage.local.clear(function() {});
-    });

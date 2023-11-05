@@ -16,37 +16,39 @@ var delayedStart;
 
 async function startFunc(message, onion) {
     let tabb = (await chrome.tabs.query({ active: true }))[0];
-    async function GetTab(resolve, reject) {
-        let count = 0;
-        let maxCount = 5;
+    let count = 0;
 
+    while ((!tabb) && count < 10) {
         tabb = (await chrome.tabs.query({ active: true }))[0];
+        console.log(tabb);
+        if (!tabb) {
+            await delay(500);
+        }
+        count++;
+    }
+    // if (!tabb.url) {
+    //     await new Promise((r, j) => GetTab(r, j));
+    // }
+    console.log(tabb);
 
-        if (!tabb.url && count < maxCount) {
-            count++;
-            await delay(1000);
-            return GetTab(resolve, reject);
-        } else {
-            resolve();
-        }
-    }
-    if (!tabb.url) {
-        await new Promise((r, j) => GetTab(r, j));
-    }
-    if (tabb.url) {
-        if (!tabb.url.includes("youtube.com")) {
-            return;
-        }
-    } else {
-        return;
-    }
+    // if (tabb.url) {
+    //     if (!tabb.url.includes("youtube.com")) {
+    //         return;
+    //     }
+    // } else {
+    //     console.log('tabb url === false');
+    //     return;
+    // }
     await setStorageLocal("tab", tabb);
+
+    const window = await chrome.windows.getCurrent();
+    console.log(window);
+    await setStorageLocal('window', window);
+
     let currentTime = getCurrentTimeSamaraNoApi();
     let boostTime = onion.boostTime;
     let time = timeMtime(currentTime, boostTime.startTime);
-    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-        chrome.tabs.sendMessage(tabb.id, { msg: "start content" });
-    });
+    chrome.tabs.sendMessage(tabb.id, { msg: "start content" });
     await setStorageLocal("boostStatus", "pre start");
 
     function assign(url) {
@@ -139,6 +141,8 @@ async function saveEnd(message, onion) {
     await setStorageLocal("completedDate", getCurrentDateSamaraNoApi());
     await setStorageLocal("boostStatus", "ended");
     await setStorageLocal("tab", null);
+    await setStorageLocal("window", null);
+
     const jno = message.data.jno;
     const name = message.data.name;
     let raport = await getStorageLocal("raport").then((data) => {
@@ -252,7 +256,7 @@ async function readyState(message, onion) {
         return data.tab;
     });
     const curTab = (await chrome.tabs.query({ active: true }))[0];
-    if (boostStatus == "stoping" && !message.data.path.includes('@')) { //|| tabb.id !== curTab.id
+    if (boostStatus == "stoping" && (message.data.path === '/results' || message.data.path === '/watch')) { //|| tabb.id !== curTab.id
         await setStorageLocal("boostStatus", "stoped");
         chrome.tabs.query({ active: true, currentWindow: true },
             function(tabs) {
@@ -262,7 +266,7 @@ async function readyState(message, onion) {
         chrome.runtime.sendMessage({
             msg: "stoped",
         });
-    } else if (boostStatus == "started" && !message.data.path.includes('@')) {
+    } else if (boostStatus == "started" && (message.data.path === '/results' || message.data.path === '/watch')) {
         await getStorageLocal("index").then(async(data) => {
             let index = data.index;
             await getStorageLocal("URLS").then(async(data) => {
@@ -275,18 +279,22 @@ async function readyState(message, onion) {
                             return data.tab;
                         });
                         const tab = (await chrome.tabs.query({ active: true }))[0];
-                        if (
-                            (windowState != "maximized" && windowState != "fullscreen") //||tabb.id != tab.id
-                        ) {
-                            await setStorageLocal("boostStatus", "stoped");
-                            chrome.runtime.sendMessage({ msg: "stoped" });
-                            chrome.tabs.query({ active: true, currentWindow: true },
-                                function(tabs) {
-                                    chrome.tabs.sendMessage(tabb.id, { msg: "stop content" });
-                                }
-                            );
-                            return;
-                        }
+                        // const window = await getStorageLocal('window').then(data => data.window);
+                        // console.log(window);
+                        // const windowUpd = chrome.windows.get(window.id);
+
+                        // if (
+                        //     (!window.focused) //(windowState != "maximized" && windowState != "fullscreen") //||tabb.id != tab.id
+                        // ) {
+                        //     await setStorageLocal("boostStatus", "stoped");
+                        //     chrome.runtime.sendMessage({ msg: "stoped" });
+                        //     chrome.tabs.query({ active: true, currentWindow: true },
+                        //         function(tabs) {
+                        //             chrome.tabs.sendMessage(tabb.id, { msg: "stop content" });
+                        //         }
+                        //     );
+                        //     return;
+                        // }
                         chrome.tabs.sendMessage(tabb.id, { msg: "load", data: { params: [URLS, index, name, onion, options] } });
                     });
                 });
@@ -298,6 +306,15 @@ async function readyState(message, onion) {
                 setTimeout(() => chrome.tabs.sendMessage(tabs[0].id, { msg: "channelActions", data: { params: [onion] } }), 5000)
             }
         })
+    } else if (message.data.path !== '/') {
+        const index = await getStorageLocal('index').then(data => data.index);
+        const URLS = await getStorageLocal('URLS').then(data => data.URLS);
+        const name = await getStorageLocal('name').then(data => data.name);
+        const tabb = await getStorageLocal("tab").then((data) => {
+            return data.tab;
+        });
+
+        chrome.tabs.sendMessage(tabb.id, { msg: "view", data: { params: [URLS, index, onion, name, options] } });
     }
 }
 async function raportPush(message, onion) {
@@ -310,7 +327,7 @@ async function raportPush(message, onion) {
     ) {
         raport.push(message.data.raport);
         await setStorageLocal("raport", raport);
-    } else {}
+    }
 }
 
 async function fromPreStart(message, onion) {
@@ -527,11 +544,14 @@ async function extraStop(message, onion) {
         await setStorageLocal("boostStatus", "not completed");
         await setStorageLocal("URLS", null);
         await setStorageLocal("tab", null);
+        await setStorageLocal("window", null);
+
     } else if (status == "pre start") {
         if (index === 0) {
             await setStorageLocal("boostStatus", "not completed");
             await setStorageLocal("URLS", null);
             await setStorageLocal("tab", null);
+            await setStorageLocal("window", null);
         } else {
             await setStorageLocal("boostStatus", "stoped");
             chrome.runtime.sendMessage({ msg: "stoped" });
@@ -569,6 +589,7 @@ async function openAdblockPage(message, onion) {
 }
 
 async function sendErrorReport(message, onion) {
+    return;
     console.log("Sending error report");
     console.log(message.data.error);
 
@@ -638,6 +659,7 @@ async function closeTab(message, onion) {
         console.log(tabId);
         if (tabId) {
             setTimeout(() => {
+                console.log(tabId);
                 chrome.tabs.remove(tabId);
             }, delay)
         }
@@ -650,6 +672,73 @@ async function closeTab(message, onion) {
     }
 }
 
+async function startNext(message, onion) {
+    const index = await getStorageLocal('index').then(data => data.index);
+    const name = await getStorageLocal('name').then(data => data.name);
+    const URLS = await getStorageLocal('URLS').then(data => data.URLS);
+
+    chrome.runtime.sendMessage({
+        msg: "raportPush",
+        data: {
+            raport: URLS[index].index + " ✖"
+        },
+    });
+
+    if (index >= URLS.length - 1) {
+        await functions.saveEnd({
+            msg: "saveEnd",
+            data: { onion: onion, jno: onion.keys, name: name },
+        })
+    } else {
+        await setStorageLocal('index', index + 1);
+        await getStorageLocal("percent").then(async(result) => {
+            console.log(result.percent);
+            let percent = (100 / URLS.length) * (index + 1);
+            console.log(percent);
+            await setStorageLocal("percent", percent);
+            chrome.runtime.sendMessage({
+                msg: "percentUpdate",
+                data: {
+                    plus: percent,
+                },
+            });
+        });
+        chrome.runtime.sendMessage({ msg: "startFunc", data: { name: name } });
+    }
+}
+
+async function clearCookie(message, onion) {
+    const { domain, url } = message.data
+    console.log(domain, url);
+    chrome.cookies.getAll({
+        domain: domain
+    }, (cookies) => {
+        console.log(cookies)
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            console.log(cookie)
+            chrome.cookies.remove({ name: cookie.name, storeId: cookie.storeId, url }, (e) => { console.log(e) })
+        }
+    })
+}
+
+async function pressSearchEnter(message, onion) {
+    function func() {
+        const input = document.querySelector('input#search');
+        const event = new Event('keydown');
+        event.keyCode = 13;
+        input.dispatchEvent(event);
+        console.log("ENTER from MAIN");
+    }
+
+    const tabb = await getStorageLocal('tab').then(data => data.tab)
+
+    chrome.scripting.executeScript({
+        target: { tabId: tabb.id },
+        func: func,
+        world: "MAIN"
+    });
+}
 
 const functions = {
     startFunc,
@@ -666,7 +755,10 @@ const functions = {
     openAdblockPage,
     sendErrorReport,
     createTab,
-    closeTab
+    closeTab,
+    startNext,
+    clearCookie,
+    pressSearchEnter
 }
 
 chrome.runtime.onMessage.addListener(
@@ -686,8 +778,6 @@ chrome.runtime.onMessage.addListener(
         if (func) {
             func(message, onion);
         }
-
-        sendResponse({ data: 'response' })
     }
 );
 
@@ -779,11 +869,13 @@ chrome.tabs.onRemoved.addListener(async function(tabId, removeInfo) {
                 await setStorageLocal("boostStatus", "not completed");
                 await setStorageLocal("URLS", null);
                 await setStorageLocal("tab", null);
+                await setStorageLocal("window", null);
             } else if (status == "pre start") {
                 if (index === 0) {
                     await setStorageLocal("boostStatus", "not completed");
                     await setStorageLocal("URLS", null);
                     await setStorageLocal("tab", null);
+                    await setStorageLocal("window", null);
                 } else {
                     await setStorageLocal("boostStatus", "stoped");
                     chrome.runtime.sendMessage({ msg: "stoped" });

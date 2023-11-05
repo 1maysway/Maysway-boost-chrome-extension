@@ -1,12 +1,15 @@
 {
     "name": "One Tap Boost",
     "description": "One Tap Boost",
-    "version": "1.3.0",
+    "version": "1.3.4",
     "manifest_version": 3,
     "background": {
         "service_worker": "background.js"
     },
-    "permissions": ["storage", "activeTab", "scripting", "cookies", "proxy", "webRequestAuthProvider", "webRequest", "management"],
+    "permissions": ["storage", "activeTab", "scripting", "cookies", "https://www.youtube.com/*", "proxy", "webRequestAuthProvider", "webRequest", "management"],
+    "host_permissions": [
+        "<all_urls>"
+    ],
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
